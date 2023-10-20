@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "wiki-tools"
+version = "0.1.0"
+description = ""
+authors = ["Gilad Kutiel <gilad.kutiel@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.10.*"
+numpy = "1.26.*"
+yq = "^3.2.3"
+
+
+[tool.poetry.group.dev.dependencies]
+autoflake = "^2.2.1"
+autopep8 = "^2.0.4"
+pytest = "^7.4.2"
+rope = "^1.10.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

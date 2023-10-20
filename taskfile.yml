@@ -1,0 +1,57 @@
+version: "3"
+
+env:
+  OUT: out
+  DUMP_BZ2: hewiktionary-latest-pages-meta-current.xml.bz2
+  DUMP_XML: hewiktionary-latest-pages-meta-current.xml
+  PAGES_JSON: pages.json
+  DEFS_RAW_JSON: defs_raw.json
+  DEFS_JSON: defs.json
+
+tasks:
+  init:
+    cmds:
+      - mkdir -p $OUT
+
+  download_dump:
+    deps:
+      - init
+    generates:
+      - $OUT/$DUMP_BZ2
+    status:
+      - test -f $OUT/$DUMP_BZ2
+    cmds:
+      - wget -O $OUT/$DUMP_BZ2 https://dumps.wikimedia.org/hewiktionary/latest/hewiktionary-latest-pages-meta-current.xml.bz2
+
+  extract_dump:
+    sources:
+      - $OUT/$DUMP_BZ2
+    generates:
+      - $OUT/$DUMP_XML
+    cmds:
+      - dtrx $OUT/$DUMP_BZ2
+      - mv $DUMP_XML $OUT/$DUMP_XML
+
+  dump2pages:
+    sources:
+      - $OUT/$DUMP_XML
+    generates:
+      - $OUT/$PAGES_JSON
+    cmds:
+      - 'xq -c ''.mediawiki.page | sort_by(.title) | .[] | select(.title | test("^[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]+$")) | {title,"text": .revision.text."#text"}'' $OUT/$DUMP_XML > $OUT/$PAGES_JSON'
+
+  pages2defs_raw:
+    sources:
+      - $OUT/$PAGES_JSON
+    generates:
+      - $OUT/$DEFS_RAW_JSON
+    cmds:
+      - 'jq -c ''{title,"def": .text | split("#")[1]}'' $OUT/$PAGES_JSON > $OUT/$DEFS_RAW_JSON'
+
+  defs_raw2defs:
+    sources:
+      - $OUT/$DEFS_RAW_JSON
+    generates:
+      - $OUT/$DEFS_JSON
+    cmds:
+      - sed -e 's/\\n//g' -e 's/<[^>]*>[^<]*<\/[^>]*>//g' -e 's/{{"{{"}}[^}]*{{"}}"}}//g' -e 's/[^[]*|//g'  -e 's/\[\[\([^]]*\)\]\]/\1/g' $OUT/$DEFS_RAW_JSON > $OUT/$DEFS_JSON
