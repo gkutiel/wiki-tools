@@ -2,18 +2,25 @@ version: "3"
 
 env:
   OUT: out
+  # WIKTIONARY
   DUMP_BZ2: hewiktionary-latest-pages-meta-current.xml.bz2
   DUMP_XML: hewiktionary-latest-pages-meta-current.xml
   PAGES_JSON: pages.json
   DEFS_RAW_JSON: defs_raw.json
   DEFS_JSON: defs.json
+  DEFS_DAILY_JSON: defs_daily.json
+  # WIKIPEDIA
+  DUMP_ABS_GZ: hewiki-latest-abstract.xml.gz
 
 tasks:
   init:
     cmds:
       - mkdir -p $OUT
+    status:
+      - test -d $OUT
 
-  download_dump:
+  # WIKTIONARY
+  dump_bz2:
     deps:
       - init
     generates:
@@ -23,35 +30,64 @@ tasks:
     cmds:
       - wget -O $OUT/$DUMP_BZ2 https://dumps.wikimedia.org/hewiktionary/latest/hewiktionary-latest-pages-meta-current.xml.bz2
 
-  extract_dump:
-    sources:
-      - $OUT/$DUMP_BZ2
+  dump_xml:
+    deps:
+      - dump_bz2
     generates:
       - $OUT/$DUMP_XML
+    status:
+      - test -f $OUT/$DUMP_XML
     cmds:
       - dtrx $OUT/$DUMP_BZ2
       - mv $DUMP_XML $OUT/$DUMP_XML
 
-  dump2pages:
-    sources:
-      - $OUT/$DUMP_XML
+  pages:
+    deps:
+      - dump_xml
     generates:
       - $OUT/$PAGES_JSON
+    status:
+      - test -f $OUT/$PAGES_JSON
     cmds:
-      - 'xq -c ''.mediawiki.page | sort_by(.title) | .[] | select(.title | test("^[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]+$")) | {title,"text": .revision.text."#text"}'' $OUT/$DUMP_XML > $OUT/$PAGES_JSON'
+      - 'xq -c ''.mediawiki.page | sort_by(.title) | .[] | select(.title | test("^[אבגדהוזחטיכלמנסעפצקרשתךםןףץ ]+$")) | {title,"text": .revision.text."#text"} | select(.text != null)'' $OUT/$DUMP_XML > $OUT/$PAGES_JSON'
 
-  pages2defs_raw:
-    sources:
-      - $OUT/$PAGES_JSON
+  defs_raw:
+    deps:
+      - dump_xml
     generates:
       - $OUT/$DEFS_RAW_JSON
+    status:
+      - test -f $OUT/$DEFS_RAW_JSON
     cmds:
-      - 'jq -c ''{title,"def": .text | split("#")[1]}'' $OUT/$PAGES_JSON > $OUT/$DEFS_RAW_JSON'
+      - 'jq -c ''{title} + (.text | capture("\\n#(?<definition>[^;.\\n]*)"; "")) | . + {"meta": .definition | [match("{{"{{"}}([^}]*){{"}}"}}").captures[0].string]}'' $OUT/$PAGES_JSON > $OUT/$DEFS_RAW_JSON'
 
-  defs_raw2defs:
-    sources:
-      - $OUT/$DEFS_RAW_JSON
+  defs:
+    deps:
+      - defs_raw
     generates:
       - $OUT/$DEFS_JSON
+    status:
+      - test -f $OUT/$DEFS_JSON
     cmds:
-      - sed -e 's/\\n//g' -e 's/<[^>]*>[^<]*<\/[^>]*>//g' -e 's/{{"{{"}}[^}]*{{"}}"}}//g' -e 's/[^[]*|//g'  -e 's/\[\[\([^]]*\)\]\]/\1/g' $OUT/$DEFS_RAW_JSON > $OUT/$DEFS_JSON
+      - 'jq -c ''{title,"definition": .definition | gsub("<[^>]*>[^<]*</[^>]*>"; "") | gsub("{{"{{"}}[^}]*{{"}}"}}"; "") | gsub("[^[]*\\|"; "") | gsub("\\[\\[(?<name>[^]]*)\\]\\]"; "\(.name)")}'' $OUT/$DEFS_RAW_JSON > $OUT/$DEFS_JSON'
+
+  defs_daily:
+    deps:
+      - defs
+    generates:
+      - $OUT/$DEFS_DAILY_JSON
+    status:
+      - test -f $OUT/$DEFS_DAILY_JSON
+    cmds:
+      - 'jq -c ''{title,definition,"t": .title | gsub(" "; "")} | select(.t | test("^[אבגדהוזחטיכלמנסעפצקרשתךםןףץ ]+$")) | select(1 < (.t | length) and (.t | length) < 8)'' $OUT/$DEFS_JSON > $OUT/$DEFS_DAILY_JSON'
+
+  # WIKIPEDIA
+  download_abs:
+    deps:
+      - init
+    generates:
+      - $OUT/$DUMP_ABS_GZ
+    status:
+      - test -f $OUT/$DUMP_ABS_GZ
+    cmds:
+      - wget -O $OUT/abs.zip https://dumps.wikimedia.org/hewiki/latest/hewiki-latest-abstract.xml.gz
