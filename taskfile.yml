@@ -9,8 +9,7 @@ env:
   DEFS_RAW_JSON: defs_raw.json
   DEFS_JSON: defs.json
   DEFS_DAILY_JSON: defs_daily.json
-  # WIKIPEDIA
-  DUMP_ABS_GZ: hewiki-latest-abstract.xml.gz
+  WORDLE_TXT: wordle.txt
 
 tasks:
   init:
@@ -81,13 +80,12 @@ tasks:
     cmds:
       - 'jq -c ''{title,definition,"t": .title | gsub(" "; "")} | select(.t | test("^[אבגדהוזחטיכלמנסעפצקרשתךםןףץ ]+$")) | select(1 < (.t | length) and (.t | length) < 8)'' $OUT/$DEFS_JSON > $OUT/$DEFS_DAILY_JSON'
 
-  # WIKIPEDIA
-  download_abs:
+  wordle:
     deps:
-      - init
+      - defs
     generates:
-      - $OUT/$DUMP_ABS_GZ
+      - $OUT/$WORDLE_TXT
     status:
-      - test -f $OUT/$DUMP_ABS_GZ
+      - test -f $OUT/$WORDLE_TXT
     cmds:
-      - wget -O $OUT/abs.zip https://dumps.wikimedia.org/hewiki/latest/hewiki-latest-abstract.xml.gz
+      - jq -r '.title | select(. | length == 5)' $OUT/$DEFS_RAW_JSON > $OUT/$WORDLE_TXT
