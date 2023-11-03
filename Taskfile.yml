@@ -1,0 +1,4 @@
+version: "3"
+
+includes:
+  wikipedia: ./wikipedia.yml

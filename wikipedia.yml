@@ -1,0 +1,34 @@
+version: 3
+
+tasks:
+  download:
+    status:
+      - test -f out/wikipedia.xml
+    cmds:
+      - wget -O wikipedia.xml.gz  https://dumps.wikimedia.org/hewiki/latest/hewiki-latest-abstract.xml.gz
+      - dtrx -rf wikipedia.xml.gz
+      - mv wikipedia.xml out/
+
+  grep:
+    deps:
+      - download
+    status:
+      - test -f out/words.txt
+    cmds:
+      - grep -E '[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]+' -o out/wikipedia.xml | sort -u > out/words.txt
+
+  top:
+    deps:
+      - download
+    status:
+      - test -f out/top.txt
+    cmds:
+      - grep -E '[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]+' -o out/wikipedia.xml | grep -E '^[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]{5}$' | sort | uniq -c | sort -nr | grep -E '[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]+' -o > out/top.txt
+
+  wordle:
+    deps:
+      - grep
+    status:
+      - test -f out/wordle.txt
+    cmds:
+      - grep -E '^[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]{5}$' out/words.txt > out/wordle.txt
