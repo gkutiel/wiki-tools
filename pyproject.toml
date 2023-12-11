@@ -9,6 +9,7 @@ readme = "README.md"
 python = "3.10.*"
 numpy = "1.26.*"
 yq = "^3.2.3"
+tqdm = "^4.66.1"
 
 
 [tool.poetry.group.dev.dependencies]
