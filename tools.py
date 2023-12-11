@@ -1,4 +1,4 @@
-from typing import Generator, List
+from typing import Generator, Iterable, List
 
 letters = set('אבגדהוזחטיכלמנסעפצקרשת')
 
@@ -36,6 +36,10 @@ def uncovered_letters(words: List[str]):
     return letters - set.union(*map(set, words))
 
 
+def letter_counter(words: Iterable[str]):
+    return {l: sum(1 for w in words if l in w) for l in letters}
+
+
 if __name__ == "__main__":
 
     with open('/home/gilad/Work/vardale/wws/words.txt') as f:
@@ -44,11 +48,15 @@ if __name__ == "__main__":
         words = [w for w in words if len(set(w)) == 5]
         words = set(words)
 
+    counter = letter_counter(words).items()
+    counter = sorted(counter, key=lambda x: x[1], reverse=True)
+    print(*counter, sep='\n')
+
     sols = list(find_wordle_move(words, 4))
     sols = [sorted(s) for s in sols]
     sols = set(tuple(s) for s in sols)
     for s in sols:
         print()
         print(*s, sep='\n')
-        print(uncovered_letters(s))
+        print(*uncovered_letters(s), sep=' ')
         print()
